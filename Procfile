@@ -1,1 +1,1 @@
-web: gunicorn forkaggr.wsgi
+web: gunicorn dotapredicter.wsgi
