@@ -189,7 +189,9 @@ for player in player_all:
                 match_ids_hero[match['hero_id']] = []
             match_ids_hero[match['hero_id']].append(match['match_id'])
 
+        # resume = player.id != 88470
         resume = True
+        added = False
         for hero_id, match_list in match_ids_hero.items():
             avg_data = {
                 'matches': 0,
@@ -200,68 +202,66 @@ for player in player_all:
                 'GPM': [],
                 'XPM': []
             }   
-            # try:
-            if len(match_list) < 10:
-                continue
-            hero_db = Hero.objects.get(pk=hero_id)
-            print(f'ID: {hero_db.id}, {hero_db.name}')
-            if resume or hero_db.id == 57:
-                if not(resume):
-                    resume = True
+            try:
+                if len(match_list) < 10:
                     continue
-                resume = True
-                print(f'Count matches: {len(match_list)}')
-                for iv, match_id in enumerate(match_list):
-                    # url_details = f'https://api.opendota.com/api/matches/{match_id}?api_key=004a3115-0163-48cd-b804-0e22ecca5cfb'
-                    url_details = f'https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/v001/?match_id={match_id}&key={API_STEAM_KEY}'
-                    print(f'{iv + 1}) URL details: {url_details}')
-                    json_details = requests.get(url_details).json()
+                hero_db = Hero.objects.get(pk=hero_id)
+                print(f'ID: {hero_db.id}, {hero_db.name}')
+                if resume or hero_db.id == 97:
+                    if not(resume):
+                        resume = True
+                        continue
+                    resume = True
+                    print(f'Count matches: {len(match_list)}')
+                    for iv, match_id in enumerate(match_list):
+                        # url_details = f'https://api.opendota.com/api/matches/{match_id}?api_key=004a3115-0163-48cd-b804-0e22ecca5cfb'
+                        url_details = f'https://api.steampowered.com/IDOTA2Match_570/GetMatchDetails/v001/?match_id={match_id}&key={API_STEAM_KEY}'
+                        print(f'{iv + 1}) URL details: {url_details}')
+                        json_details = requests.get(url_details).json()
 
-                    if json_details != 'error':
-                        heroinfo = find_player(json_details['result']['players'], player.id)
-                        json_details = json_details['result']
-                        # Save data for Captians Mode
-                        try:
-                            if json_details['game_mode'] == 2 and len(json_details['picks_bans']) == 22:
-                                for pick_ban in json_details['picks_bans']:
-                                    pb_hero = Hero.objects.get(pk=pick_ban['hero_id'])
-                                    competitve_match = CMatch(match_id=match_id, hero=pb_hero, player_id=simple_hero['account_id'], is_pick=pick_ban['is_pick'])
-                                    competitve_match.save()
-                                print(f'Competitve match {match_id} saved')
-                            elif json_details['human_players'] == 10:
-                                for simple_hero in json_details['players']:
-                                    print(simple_hero)
-                                    sm_hero = Hero.objects.get(pk=simple_hero['hero_id'])
-                                    sm = SimpleMatch(match_id=match_id, hero=sm_hero, player_id=simple_hero['account_id'])
-                                    sm.save()
-                        except Exception as e:
-                            print('Error save match info')
-                            print(e)
+                        if json_details != 'error':
+                            heroinfo = find_player(json_details['result']['players'], player.id)
+                            json_details = json_details['result']
+                            # Save data for Captians Mode
+                            try:
+                                if json_details['game_mode'] == 2 and len(json_details['picks_bans']) == 22:
+                                    for pick_ban in json_details['picks_bans']:
+                                        pb_hero = Hero.objects.get(pk=pick_ban['hero_id'])
+                                        competitve_match = CMatch(match_id=match_id, hero=pb_hero, player_id=simple_hero['account_id'], is_pick=pick_ban['is_pick'])
+                                        competitve_match.save()
+                                    print(f'Competitve match {match_id} saved')
+                                elif json_details['human_players'] == 10:
+                                    for simple_hero in json_details['players']:
+                                        sm_hero = Hero.objects.get(pk=simple_hero['hero_id'])
+                                        sm = SimpleMatch(match_id=match_id, hero=sm_hero, player_id=simple_hero['account_id'])
+                                        sm.save()
+                            except Exception as e:
+                                print('Error save match info')
+                                print(e)
 
-                        avg_data['kills'].append(heroinfo['kills'])
-                        avg_data['deaths'].append(heroinfo['deaths'])
-                        avg_data['assists'].append(heroinfo['assists'])
-                        avg_data['GPM'].append(heroinfo['gold_per_min'])
-                        avg_data['XPM'].append(heroinfo['xp_per_min'])
-                        # Saving match info
-                        if 'lobby_type' in json_details.keys() and 'game_mode' in json_details.keys():
-                            new_matchinfo = MatchInfo(match_id=match_id,
-                                                    lobby_type=json_details['lobby_type'],
-                                                    game_mode=json_details['game_mode'])
-                            new_matchinfo.save()
+                            avg_data['kills'].append(heroinfo['kills'])
+                            avg_data['deaths'].append(heroinfo['deaths'])
+                            avg_data['assists'].append(heroinfo['assists'])
+                            avg_data['GPM'].append(heroinfo['gold_per_min'])
+                            avg_data['XPM'].append(heroinfo['xp_per_min'])
+                            # Saving match info
+                            if 'lobby_type' in json_details.keys() and 'game_mode' in json_details.keys():
+                                new_matchinfo = MatchInfo(match_id=match_id,
+                                                        lobby_type=json_details['lobby_type'],
+                                                        game_mode=json_details['game_mode'])
+                                new_matchinfo.save()
 
-                new_hero = HeroData(player=player,
-                                    hero=hero_db,
-                                    matches=len(match_list),
-                                    kills=np.average(avg_data['kills']),
-                                    deaths=np.average(avg_data['deaths']),
-                                    assists=np.average(avg_data['assists']),
-                                    GPM=np.average(avg_data['GPM']),
-                                    XPM=np.average(avg_data['XPM']))
-                new_hero.save()
+                    new_hero = HeroData(player=player,
+                                        hero=hero_db,
+                                        matches=len(match_list),
+                                        kills=np.average(avg_data['kills']),
+                                        deaths=np.average(avg_data['deaths']),
+                                        assists=np.average(avg_data['assists']),
+                                        GPM=np.average(avg_data['GPM']),
+                                        XPM=np.average(avg_data['XPM']))
+                    new_hero.save()
 
-                print(f'Hero {hero_db.name} saved!')
-            # except:
-            #     print(f'Error hero: {hero_id}')
-            #     print(avg_data)
-            #     save_file('error', hero_id)
+                    print(f'Hero {hero_db.name} saved!')
+            except Exception as e:
+                print(f'Error hero: {hero_id}')
+                save_file(str(e), hero_id)
