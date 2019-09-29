@@ -27,7 +27,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
-
+MEDIA_URL = 'pro/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'pro/media')
 # Application definition
 
 INSTALLED_APPS = [
@@ -38,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'predicter',
-    'frontend'
+    'frontend',
+    'pro',
 ]
 
 MIDDLEWARE = [
